@@ -1,0 +1,60 @@
+apiVersion: datadoghq.com/v1alpha1
+kind: DatadogMonitor
+metadata:
+  name: web-cpu-memory-alerts
+  namespace: default
+spec:
+  monitor:
+    name: "Web Deployment CPU / Memory / Pod Alerts"
+    type: "metric alert"
+    query: >
+      avg(last_5m):avg:kubernetes.memory.usage{deployment:web} by {pod} > 80
+    message: |
+      ⚠️ Memory usage of pod {{pod.name}} in deployment 'web' exceeded 80%
+      @slack-your-channel
+    tags:
+      - deployment:web
+      - team:devops
+    options:
+      thresholds:
+        critical: 80
+---
+apiVersion: datadoghq.com/v1alpha1
+kind: DatadogDashboard
+metadata:
+  name: web-k8s-dashboard
+  namespace: default
+spec:
+  dashboard:
+    title: "Web Deployment Dashboard"
+    widgets:
+      - definition:
+          type: timeseries
+          title: "CPU Usage"
+          requests:
+            - q: "avg:kubernetes.cpu.usage{deployment:web} by {pod}"
+              display_type: line
+      - definition:
+          type: timeseries
+          title: "Memory Usage"
+          requests:
+            - q: "avg:kubernetes.memory.usage{deployment:web} by {pod}"
+              display_type: line
+      - definition:
+          type: timeseries
+          title: "Pod Restarts"
+          requests:
+            - q: "sum:kubernetes.pod.restart_count{deployment:web} by {pod}"
+              display_type: bars
+      - definition:
+          type: timeseries
+          title: "HPA Replicas"
+          requests:
+            - q: "avg:kubernetes.hpa.current_replicas{deployment:web} by {hpa}"
+              display_type: line
+      - definition:
+          type: timeseries
+          title: "Request Latency"
+          requests:
+            - q: "avg:kubernetes.http.latency{deployment:web} by {pod}"
+              display_type: line
